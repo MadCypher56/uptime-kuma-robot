@@ -1,0 +1,17 @@
+# Environment variables
+.env
+
+# Virtual environments
+venv/
+flask-app/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Static cache (extra safety)
+static/**/__pycache__/
+
+# Old / test files
+app-old.py
+test-connection.py

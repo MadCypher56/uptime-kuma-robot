@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status Pages Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                <span class="theme-toggle-icon" id="themeIcon">🌙</span>
+                <span class="theme-toggle-text" id="themeText">Dark Mode</span>
+            </button>
+            <h1>📄 Status Pages Management</h1>
+            <p class="subtitle">Manage public status pages for your monitored services</p>
+        </header>
+
+        <div class="nav-links">
+            <a href="/" class="nav-link">← Back to Dashboard</a>
+        </div>
+
+        <div class="config-status" id="configStatus">
+            <div class="status-item">
+                <span class="status-label">Uptime Robot</span>
+                <span class="status-badge" id="robotStatus">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Uptime Kuma</span>
+                <span class="status-badge" id="kumaStatus">Checking...</span>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Uptime Robot Status Pages -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>📊 Uptime Robot Status Pages</h2>
+                    <div class="header-buttons">
+                        <button class="add-btn" onclick="openAddStatusPageModal('robot')">➕ Add Status Page</button>
+                        <button class="refresh-btn" onclick="refreshRobotStatusPages()">🔄 Refresh</button>
+                    </div>
+                </div>
+                <div id="robotStatusPages" class="monitors-container">
+                    <div class="loading">Loading status pages...</div>
+                </div>
+            </div>
+
+            <!-- Uptime Kuma Status Pages -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>🔒 Uptime Kuma Status Pages</h2>
+                    <div class="header-buttons">
+                        <button class="add-btn" onclick="openAddStatusPageModal('kuma')">➕ Add Status Page</button>
+                        <button class="refresh-btn" onclick="refreshKumaStatusPages()">🔄 Refresh</button>
+                    </div>
+                </div>
+                <div id="kumaStatusPages" class="monitors-container">
+                    <div class="loading">Loading status pages...</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Last updated: <span id="lastUpdate">Never</span></p>
+            <button class="refresh-all-btn" onclick="refreshAllStatusPages()">🔄 Refresh All</button>
+        </footer>
+    </div>
+
+    <!-- Add Uptime Robot Status Page Modal -->
+    <div id="addRobotStatusPageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Uptime Robot Status Page</h2>
+                <span class="close" onclick="closeModal('addRobotStatusPageModal')">&times;</span>
+            </div>
+            <form id="addRobotStatusPageForm">
+                <div style="padding: 24px;">
+                    <div class="form-group">
+                        <label for="robotPageName">Page Name *</label>
+                        <input type="text" id="robotPageName" required placeholder="e.g., My Services Status">
+                    </div>
+                    <div class="form-group">
+                        <label for="robotPageDomain">Custom Domain (optional)</label>
+                        <input type="text" id="robotPageDomain" placeholder="status.example.com">
+                        <small>Leave empty to use default Uptime Robot subdomain</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="robotPageMonitors">Select Monitors</label>
+                        <div id="robotPageMonitors" class="checkbox-group">
+                            <div class="loading">Loading monitors...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('addRobotStatusPageModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Status Page</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Uptime Kuma Status Page Modal -->
+    <div id="addKumaStatusPageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Uptime Kuma Status Page</h2>
+                <span class="close" onclick="closeModal('addKumaStatusPageModal')">&times;</span>
+            </div>
+            <form id="addKumaStatusPageForm">
+                <div style="padding: 24px;">
+                    <div class="form-group">
+                        <label for="kumaPageSlug">Page Slug *</label>
+                        <input type="text" id="kumaPageSlug" required placeholder="my-services" pattern="[a-z0-9-]+">
+                        <small>Only lowercase letters, numbers, and hyphens</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="kumaPageTitle">Page Title *</label>
+                        <input type="text" id="kumaPageTitle" required placeholder="My Services Status">
+                    </div>
+                    <div class="form-group">
+                        <label for="kumaPageDescription">Description (optional)</label>
+                        <textarea id="kumaPageDescription" rows="3" placeholder="Status page for our services"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('addKumaStatusPageModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Status Page</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Status Page Modal -->
+    <div id="deleteStatusPageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete Status Page</h2>
+                <span class="close" onclick="closeModal('deleteStatusPageModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 16px;">Are you sure you want to delete this status page?</p>
+                <p style="margin-bottom: 16px;"><strong id="deleteStatusPageName"></strong></p>
+                <p class="warning">⚠️ This action cannot be undone and will make the status page inaccessible!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('deleteStatusPageModal')">Cancel</button>
+                <button type="button" class="btn-danger" onclick="confirmDeleteStatusPage()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/status_pages.js') }}"></script>
+    
+    <!-- Dark Mode Toggle Script -->
+    <script>
+        // Dark Mode Toggle Functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            updateThemeButton(newTheme);
+        }
+        
+        function updateThemeButton(theme) {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            
+            if (theme === 'dark') {
+                icon.textContent = '☀️';
+                text.textContent = 'Light Mode';
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Dark Mode';
+            }
+        }
+        
+        // Load saved theme on page load
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton(savedTheme);
+        })();
+    </script>
+    
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+</body>
+</html>

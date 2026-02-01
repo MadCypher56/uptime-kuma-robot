@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status Page Details - Uptime Monitoring</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/status_page_detail.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                <span class="theme-toggle-icon" id="themeIcon">🌙</span>
+                <span class="theme-toggle-text" id="themeText">Dark Mode</span>
+            </button>
+            <h1 id="pageTitle">📄 Status Page Details</h1>
+            <p class="subtitle" id="pageSubtitle">Loading...</p>
+        </header>
+
+        <div class="nav-links">
+            <a href="/status-pages" class="nav-link">← Back to Status Pages</a>
+        </div>
+
+        <!-- Status Page Information -->
+        <div class="page-info-section">
+            <div class="section-header">
+                <h2>ℹ️ Status Page Information</h2>
+                <div class="header-buttons">
+                    <button class="action-btn" id="viewPublicBtn" onclick="viewPublicPage()">
+                        🌐 View Public Page
+                    </button>
+                    <button class="action-btn danger" onclick="deleteStatusPage()">
+                        🗑️ Delete Page
+                    </button>
+                </div>
+            </div>
+            <div class="info-grid" id="pageInfoGrid">
+                <div class="loading">Loading status page information...</div>
+            </div>
+        </div>
+
+        <!-- Monitors Section -->
+        <div class="monitors-section">
+            <div class="section-header">
+                <h2>📊 Monitors on this Status Page</h2>
+                <div class="header-buttons">
+                    <button class="add-btn" id="addMonitorBtn" onclick="openAddMonitorModal()">
+                        ➕ Add Monitor
+                    </button>
+                    <button class="refresh-btn" onclick="refreshMonitors()">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+            <div id="monitorsContainer" class="monitors-grid">
+                <div class="loading">Loading monitors...</div>
+            </div>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="stats-section">
+            <div class="section-header">
+                <h2>📈 Overall Statistics</h2>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Total Monitors</div>
+                        <div class="stat-value" id="totalMonitors">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Operational</div>
+                        <div class="stat-value" id="operationalMonitors">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Down</div>
+                        <div class="stat-value" id="downMonitors">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏸️</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Paused</div>
+                        <div class="stat-value" id="pausedMonitors">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Avg Uptime</div>
+                        <div class="stat-value" id="avgUptime">--</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Avg Response</div>
+                        <div class="stat-value" id="avgResponse">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Status Page ID: <span id="pageId">--</span> | Service: <span id="pageService">--</span></p>
+            <p>Last updated: <span id="lastUpdate">Never</span></p>
+        </footer>
+    </div>
+
+    <!-- Add Monitor to Status Page Modal -->
+    <div id="addMonitorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Monitor to Status Page</h2>
+                <span class="close" onclick="closeModal('addMonitorModal')">&times;</span>
+            </div>
+            <div style="padding: 24px;">
+                <div id="availableMonitorsContainer">
+                    <div class="loading">Loading available monitors...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('addMonitorModal')">Cancel</button>
+                <button type="button" class="btn-primary" onclick="confirmAddMonitors()">Add Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Status Page Modal -->
+    <div id="deleteStatusPageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete Status Page</h2>
+                <span class="close" onclick="closeModal('deleteStatusPageModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 16px;">Are you sure you want to delete this status page?</p>
+                <p style="margin-bottom: 16px;"><strong id="deletePageName"></strong></p>
+                <p class="warning">⚠️ This action cannot be undone and will make the status page inaccessible!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('deleteStatusPageModal')">Cancel</button>
+                <button type="button" class="btn-danger" onclick="confirmDeleteStatusPage()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/status_page_detail.js') }}"></script>
+    
+    <!-- Dark Mode Toggle Script -->
+    <script>
+        // Dark Mode Toggle Functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            updateThemeButton(newTheme);
+        }
+        
+        function updateThemeButton(theme) {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            
+            if (theme === 'dark') {
+                icon.textContent = '☀️';
+                text.textContent = 'Light Mode';
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Dark Mode';
+            }
+        }
+        
+        // Load saved theme on page load
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton(savedTheme);
+        })();
+    </script>
+    
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+</body>
+</html>

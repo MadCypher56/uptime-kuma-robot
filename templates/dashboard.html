@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uptime Monitoring Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                <span class="theme-toggle-icon" id="themeIcon">🌙</span>
+                <span class="theme-toggle-text" id="themeText">Dark Mode</span>
+            </button>
+            <h1>🚀 Uptime Monitoring Dashboard</h1>
+            <p class="subtitle">Integrated view of Uptime Robot & Uptime Kuma</p>
+        </header>
+
+        <div class="nav-links">
+            <a href="/status-pages" class="nav-link">📄 Manage Status Pages</a>
+        </div>
+
+        <div class="config-status" id="configStatus">
+            <div class="status-item">
+                <span class="status-label">Uptime Robot</span>
+                <span class="status-badge" id="robotStatus">Checking...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Uptime Kuma</span>
+                <span class="status-badge" id="kumaStatus">Checking...</span>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Uptime Robot Section -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>📊 Uptime Robot</h2>
+                    <div class="header-buttons">
+                        <button class="add-btn" onclick="openAddMonitorModal('robot')">➕ Add Monitor</button>
+                        <button class="refresh-btn" onclick="refreshUptimeRobot()">🔄 Refresh</button>
+                    </div>
+                </div>
+                <div id="uptimeRobotMonitors" class="monitors-container">
+                    <div class="loading">Loading monitors...</div>
+                </div>
+            </div>
+
+            <!-- Uptime Kuma Section -->
+            <div class="dashboard-section">
+                <div class="section-header">
+                    <h2>🔒 Uptime Kuma</h2>
+                    <div class="header-buttons">
+                        <button class="add-btn" onclick="openAddMonitorModal('kuma')">➕ Add Monitor</button>
+                        <button class="refresh-btn" onclick="refreshUptimeKuma()">🔄 Refresh</button>
+                    </div>
+                </div>
+                <div id="uptimeKumaMonitors" class="monitors-container">
+                    <div class="loading">Loading monitors...</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Last updated: <span id="lastUpdate">Never</span></p>
+            <button class="refresh-all-btn" onclick="refreshAll()">🔄 Refresh All</button>
+        </footer>
+    </div>
+
+    <!-- Add Monitor Modal -->
+    <div id="addMonitorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Monitor</h2>
+                <span class="close" onclick="closeModal('addMonitorModal')">&times;</span>
+            </div>
+            <form id="addMonitorForm">
+                <div style="padding: 24px;">
+                    <div class="form-group">
+                        <label for="monitorName">Monitor Name *</label>
+                        <input type="text" id="monitorName" required placeholder="e.g., My Website">
+                    </div>
+                    <div class="form-group">
+                        <label for="monitorUrl">URL *</label>
+                        <input type="url" id="monitorUrl" required placeholder="https://example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="monitorType">Monitor Type</label>
+                        <select id="monitorType">
+                            <option value="1">HTTP(s)</option>
+                            <option value="3">Ping</option>
+                            <option value="4">Port</option>
+                            <option value="2">Keyword</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="monitorInterval">Check Interval (seconds)</label>
+                        <input type="number" id="monitorInterval" value="300" min="60">
+                        <small>Minimum: 60 seconds (1 minute)</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('addMonitorModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Add Monitor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Monitor Modal -->
+    <div id="editMonitorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Monitor</h2>
+                <span class="close" onclick="closeModal('editMonitorModal')">&times;</span>
+            </div>
+            <form id="editMonitorForm">
+                <div style="padding: 24px;">
+                    <input type="hidden" id="editMonitorId">
+                    <div class="form-group">
+                        <label for="editMonitorName">Monitor Name *</label>
+                        <input type="text" id="editMonitorName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editMonitorUrl">URL *</label>
+                        <input type="url" id="editMonitorUrl" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editMonitorInterval">Check Interval (seconds)</label>
+                        <input type="number" id="editMonitorInterval" min="60">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeModal('editMonitorModal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteMonitorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete Monitor</h2>
+                <span class="close" onclick="closeModal('deleteMonitorModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 16px;">Are you sure you want to delete this monitor?</p>
+                <p style="margin-bottom: 16px;"><strong id="deleteMonitorName"></strong></p>
+                <p class="warning">⚠️ This action cannot be undone!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('deleteMonitorModal')">Cancel</button>
+                <button type="button" class="btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    
+    <!-- Dark Mode Toggle Script -->
+    <script>
+        // Dark Mode Toggle Functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            updateThemeButton(newTheme);
+        }
+        
+        function updateThemeButton(theme) {
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            
+            if (theme === 'dark') {
+                icon.textContent = '☀️';
+                text.textContent = 'Light Mode';
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Dark Mode';
+            }
+        }
+        
+        // Load saved theme on page load
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton(savedTheme);
+        })();
+    </script>
+    
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+</body>
+</html>
