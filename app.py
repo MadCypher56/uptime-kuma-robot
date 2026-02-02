@@ -108,20 +108,54 @@ def api_uptime_robot_monitors():
 
 @app.route('/api/uptime-robot/monitor/add', methods=['POST'])
 def add_uptime_robot_monitor():
-    """Add a new monitor to Uptime Robot."""
+    """Add a new monitor to Uptime Robot - Fixed for all monitor types."""
     try:
         service = get_uptime_robot_service()
         data = request.get_json()
         
-        if not data.get('friendly_name') or not data.get('url'):
-            return jsonify({'success': False, 'error': 'Name and URL are required'})
+        if not data.get('friendly_name'):
+            return jsonify({'success': False, 'error': 'Name is required'})
         
-        monitor = service.add_monitor(
-            name=data['friendly_name'],
-            url=data['url'],
-            monitor_type=data.get('type', UptimeRobotService.MONITOR_TYPE_HTTP),
-            interval=data.get('interval', 300)
-        )
+        monitor_type = data.get('type', UptimeRobotService.MONITOR_TYPE_HTTP)
+        
+        # Build base parameters
+        params = {
+            'name': data['friendly_name'],
+            'monitor_type': monitor_type,
+            'interval': data.get('interval', 300)
+        }
+        
+        # Add type-specific parameters
+        if monitor_type == 1:  # HTTP(s)
+            if not data.get('url'):
+                return jsonify({'success': False, 'error': 'URL is required for HTTP monitors'})
+            params['url'] = data['url']
+            
+        elif monitor_type == 2:  # Keyword
+            if not data.get('url'):
+                return jsonify({'success': False, 'error': 'URL is required for Keyword monitors'})
+            if not data.get('keyword_value'):
+                return jsonify({'success': False, 'error': 'Keyword is required for Keyword monitors'})
+            params['url'] = data['url']
+            params['keyword_value'] = data['keyword_value']
+            params['keyword_type'] = data.get('keyword_type', 1)  # 1 = exists, 2 = not exists
+            
+        elif monitor_type == 3:  # Ping
+            if not data.get('url'):
+                return jsonify({'success': False, 'error': 'Hostname is required for Ping monitors'})
+            params['url'] = data['url']  # For Uptime Robot, Ping uses 'url' field for hostname
+            
+        elif monitor_type == 4:  # Port
+            if not data.get('url'):
+                return jsonify({'success': False, 'error': 'Hostname is required for Port monitors'})
+            if not data.get('port'):
+                return jsonify({'success': False, 'error': 'Port number is required for Port monitors'})
+            params['url'] = data['url']  # Hostname goes in 'url' field
+            params['port'] = int(data['port'])
+            params['sub_type'] = data.get('sub_type', 1)  # 1 = Custom port
+        
+        # Create the monitor
+        monitor = service.add_monitor(**params)
         
         return jsonify({'success': True, 'monitor': monitor})
         
@@ -275,7 +309,7 @@ def api_uptime_kuma_monitors():
 
 @app.route('/api/uptime-kuma/monitor/add', methods=['POST'])
 def add_uptime_kuma_monitor():
-    """Add a new monitor to Uptime Kuma."""
+    """Add a new monitor to Uptime Kuma - Fixed for all monitor types."""
     try:
         service = get_uptime_kuma_service()
         data = request.get_json()
@@ -283,12 +317,47 @@ def add_uptime_kuma_monitor():
         if not data.get('name'):
             return jsonify({'success': False, 'error': 'Name is required'})
         
-        monitor = service.add_monitor(
-            name=data['name'],
-            url=data.get('url'),
-            monitor_type=data.get('type', 'http'),
-            interval=data.get('interval', 60)
-        )
+        # Build the monitor parameters based on type
+        monitor_type = data.get('type', 'http')
+        params = {
+            'name': data['name'],
+            'monitor_type': monitor_type,
+            'interval': data.get('interval', 60)
+        }
+        
+        # Add type-specific parameters
+        if monitor_type == 'http':
+            # HTTP monitor needs URL
+            if not data.get('url'):
+                return jsonify({'success': False, 'error': 'URL is required for HTTP monitors'})
+            params['url'] = data['url']
+            
+        elif monitor_type == 'keyword':
+            # Keyword monitor needs URL and keyword
+            if not data.get('url'):
+                return jsonify({'success': False, 'error': 'URL is required for Keyword monitors'})
+            if not data.get('keyword'):
+                return jsonify({'success': False, 'error': 'Keyword is required for Keyword monitors'})
+            params['url'] = data['url']
+            params['keyword'] = data['keyword']
+                
+        elif monitor_type == 'ping':
+            # Ping monitor needs hostname
+            if not data.get('hostname'):
+                return jsonify({'success': False, 'error': 'Hostname is required for Ping monitors'})
+            params['hostname'] = data['hostname']
+            
+        elif monitor_type == 'port':
+            # Port monitor needs hostname and port
+            if not data.get('hostname'):
+                return jsonify({'success': False, 'error': 'Hostname is required for Port monitors'})
+            if not data.get('port'):
+                return jsonify({'success': False, 'error': 'Port is required for Port monitors'})
+            params['hostname'] = data['hostname']
+            params['port'] = int(data['port'])
+        
+        # Call the service with the appropriate parameters
+        monitor = service.add_monitor(**params)
         
         return jsonify({'success': True, 'monitor': monitor})
         
@@ -474,18 +543,29 @@ def get_uptime_robot_status_page_monitors(page_id):
     """Get monitors on a specific Uptime Robot status page."""
     try:
         service = get_uptime_robot_service()
-        pages = service.get_status_pages()
         
-        # Find the specific page
+        # Get ALL monitors first
+        all_monitors = service.get_monitors()
+        
+        # Get the specific status page
+        pages = service.get_status_pages()
         page = next((p for p in pages if p.get('id') == page_id), None)
         
         if not page:
             return jsonify({'error': 'Status page not found', 'monitors': []}), 404
         
-        # Get the monitors from the page
-        monitors = page.get('monitors', [])
+        # Get the monitor IDs that are on this status page
+        page_monitor_ids = [m.get('id') for m in page.get('monitors', [])]
         
-        return jsonify({'monitors': monitors})
+        # Filter to only include monitors that are on this page
+        page_monitors = []
+        for monitor in all_monitors:
+            if monitor.get('id') in page_monitor_ids:
+                page_monitors.append(monitor)
+        
+        logger.info(f"Status page {page_id} has {len(page_monitors)} monitors (filtered from {len(all_monitors)} total)")
+        return jsonify({'monitors': page_monitors})
+        
     except Exception as e:
         logger.error(f"Error getting status page monitors: {e}")
         return jsonify({'error': str(e), 'monitors': []}), 500
@@ -580,12 +660,36 @@ def get_uptime_kuma_status_page_monitors(slug):
     try:
         service = get_uptime_kuma_service()
         
-        # Get all monitors (Kuma doesn't have specific status page monitor filtering in basic API)
+        # Get the specific status page configuration
+        status_page = service.get_status_page(slug)
+        
+        if not status_page:
+            return jsonify({'error': 'Status page not found', 'monitors': []}), 404
+        
+        # Get monitor IDs/groups from the status page config
+        # Uptime Kuma stores this in publicGroupList
+        public_groups = status_page.get('publicGroupList', [])
+        
+        # Get all monitors
         all_monitors = service.get_monitors()
         
-        # In a real implementation, you'd filter based on the status page config
-        # For now, return all monitors as they can all be shown on status pages
-        return jsonify({'monitors': all_monitors})
+        # Extract monitor IDs from the public groups
+        page_monitor_ids = []
+        for group in public_groups:
+            monitor_list = group.get('monitorList', [])
+            page_monitor_ids.extend([m.get('id') for m in monitor_list if m.get('id')])
+        
+        # Filter monitors to only those on this page
+        page_monitors = []
+        for monitor in all_monitors:
+            if monitor.get('id') in page_monitor_ids:
+                page_monitors.append(monitor)
+        
+        # If no specific monitors configured, return empty list
+        # (don't show all monitors by default)
+        logger.info(f"Status page '{slug}' has {len(page_monitors)} monitors (filtered from {len(all_monitors)} total)")
+        return jsonify({'monitors': page_monitors})
+        
     except Exception as e:
         logger.error(f"Error getting status page monitors: {e}")
         return jsonify({'error': str(e), 'monitors': []}), 500

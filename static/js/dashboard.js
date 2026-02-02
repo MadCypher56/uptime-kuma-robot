@@ -1,4 +1,4 @@
-// Dashboard JavaScript with CRUD Operations and Detail View Links
+// Dashboard JavaScript with CRUD Operations, Detail View Links, and Enhanced Monitor Type Support
 
 // Global variables
 let currentService = null; // 'robot' or 'kuma'
@@ -7,7 +7,6 @@ let deleteMonitorId = null;
 // ==================== TOAST NOTIFICATIONS ====================
 
 function showToast(message, type = 'info') {
-    // Create container if it doesn't exist
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -33,17 +32,15 @@ function showToast(message, type = 'info') {
 
     container.appendChild(toast);
 
-    // Auto-remove toast after animation completes
     setTimeout(() => {
         if (toast.parentElement) {
             toast.remove();
         }
-    }, 4400); // 4s display + 0.4s fadeOut animation
+    }, 4400);
 }
 
 // ==================== CONFIGURATION STATUS ====================
 
-// Check configuration status on load
 async function checkConfigStatus() {
     try {
         const response = await fetch('/api/status');
@@ -75,13 +72,11 @@ async function checkConfigStatus() {
 
 // ==================== UTILITY FUNCTIONS ====================
 
-// Format uptime percentage
 function formatUptime(uptime) {
     if (!uptime || uptime === 'N/A') return 'N/A';
     return `${uptime}%`;
 }
 
-// Get status text for Uptime Robot
 function getUptimeRobotStatus(status) {
     const statusMap = {
         0: { text: 'Paused', class: 'paused' },
@@ -93,38 +88,32 @@ function getUptimeRobotStatus(status) {
     return statusMap[status] || { text: 'Unknown', class: 'paused' };
 }
 
-// Escape HTML to prevent XSS
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML.replace(/'/g, "\\'");
 }
 
-// Update last update time
 function updateLastUpdateTime() {
     const now = new Date();
-    const timeString = now.toLocaleTimeString();
-    document.getElementById('lastUpdate').textContent = timeString;
+    document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
 }
 
-// Navigate to monitor detail page
 function viewMonitorDetail(service, monitorId) {
     window.location.href = `/monitor-detail?service=${service}&id=${monitorId}`;
 }
 
-// ==================== FETCH & DISPLAY MONITORS ====================
+// ==================== LOAD MONITORS ====================
 
-// Fetch and display Uptime Robot monitors
-async function refreshUptimeRobot() {
+async function loadUptimeRobotMonitors() {
     const container = document.getElementById('uptimeRobotMonitors');
-    container.innerHTML = '<div class="loading">Loading monitors...</div>';
     
     try {
         const response = await fetch('/api/uptime-robot/monitors');
         const data = await response.json();
         
         if (data.error) {
-            container.innerHTML = `<div class="error-message">Error: ${data.error}</div>`;
+            container.innerHTML = `<div class="error-message">${data.error}</div>`;
             return;
         }
         
@@ -136,6 +125,7 @@ async function refreshUptimeRobot() {
         container.innerHTML = '';
         data.monitors.forEach(monitor => {
             const status = getUptimeRobotStatus(monitor.status);
+            
             const card = document.createElement('div');
             card.className = 'monitor-card';
             card.style.cursor = 'pointer';
@@ -156,20 +146,28 @@ async function refreshUptimeRobot() {
                 <div class="monitor-url">${monitor.url || 'N/A'}</div>
                 <div class="monitor-stats">
                     <div class="stat-item">
-                        <div class="stat-label">Uptime</div>
-                        <div class="stat-value">${formatUptime(monitor.uptime_ratio)}</div>
+                        <div class="stat-label">Uptime (24h)</div>
+                        <div class="stat-value">${formatUptime(monitor.uptime_ratio?.split('-')[0])}</div>
                     </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Uptime (30d)</div>
+                        <div class="stat-value">${formatUptime(monitor.uptime_ratio?.split('-')[2])}</div>
+                    </div>
+                </div>
+                <div class="monitor-stats">
                     <div class="stat-item">
                         <div class="stat-label">Response Time</div>
                         <div class="stat-value">${monitor.response_time !== 'N/A' ? monitor.response_time + 'ms' : 'N/A'}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Type</div>
+                        <div class="stat-value">${getMonitorTypeName(monitor.type)}</div>
                     </div>
                 </div>
                 <div class="monitor-detail-hint">Click for detailed metrics →</div>
             `;
             
-            // Add click handler for the entire card
             card.addEventListener('click', function(e) {
-                // Don't navigate if clicking on action buttons
                 if (!e.target.closest('.action-btn')) {
                     viewMonitorDetail('robot', monitor.id);
                 }
@@ -185,17 +183,15 @@ async function refreshUptimeRobot() {
     }
 }
 
-// Fetch and display Uptime Kuma monitors
-async function refreshUptimeKuma() {
+async function loadUptimeKumaMonitors() {
     const container = document.getElementById('uptimeKumaMonitors');
-    container.innerHTML = '<div class="loading">Loading monitors...</div>';
     
     try {
         const response = await fetch('/api/uptime-kuma/monitors');
         const data = await response.json();
         
         if (data.error) {
-            container.innerHTML = `<div class="error-message">Error: ${data.error}</div>`;
+            container.innerHTML = `<div class="error-message">${data.error}</div>`;
             return;
         }
         
@@ -206,7 +202,6 @@ async function refreshUptimeKuma() {
         
         container.innerHTML = '';
         data.monitors.forEach(monitor => {
-            // Determine status based on the actual UP/DOWN state
             const status = monitor.status 
                 ? { text: 'Up', class: 'up' } 
                 : { text: 'Down', class: 'down' };
@@ -228,7 +223,7 @@ async function refreshUptimeKuma() {
                     <div class="monitor-name">${monitor.name}</div>
                     <div class="monitor-status ${status.class}">${status.text}</div>
                 </div>
-                <div class="monitor-url">${monitor.url || 'N/A'}</div>
+                <div class="monitor-url">${monitor.url || monitor.hostname || 'N/A'}</div>
                 <div class="monitor-stats">
                     <div class="stat-item">
                         <div class="stat-label">Uptime (24h)</div>
@@ -252,9 +247,7 @@ async function refreshUptimeKuma() {
                 <div class="monitor-detail-hint">Click for detailed metrics →</div>
             `;
             
-            // Add click handler for the entire card
             card.addEventListener('click', function(e) {
-                // Don't navigate if clicking on action buttons
                 if (!e.target.closest('.action-btn')) {
                     viewMonitorDetail('kuma', monitor.id);
                 }
@@ -270,15 +263,31 @@ async function refreshUptimeKuma() {
     }
 }
 
-// Refresh all monitors
+function refreshUptimeRobot() {
+    loadUptimeRobotMonitors();
+}
+
+function refreshUptimeKuma() {
+    loadUptimeKumaMonitors();
+}
+
 function refreshAll() {
     refreshUptimeRobot();
     refreshUptimeKuma();
 }
 
+function getMonitorTypeName(type) {
+    const typeMap = {
+        1: 'HTTP(s)',
+        2: 'Keyword',
+        3: 'Ping',
+        4: 'Port'
+    };
+    return typeMap[type] || 'Unknown';
+}
+
 // ==================== MODAL FUNCTIONS ====================
 
-// Open modal
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -286,7 +295,6 @@ function openModal(modalId) {
     }
 }
 
-// Close modal
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -294,49 +302,154 @@ function closeModal(modalId) {
     }
 }
 
-// Close modal when clicking outside
 window.onclick = function(event) {
     if (event.target.classList.contains('modal')) {
         event.target.style.display = 'none';
     }
 }
 
-// ==================== ADD MONITOR ====================
+// ==================== ADD MONITOR - ENHANCED WITH DYNAMIC FIELDS ====================
 
 function openAddMonitorModal(service) {
     currentService = service;
     const modalTitle = service === 'robot' ? 'Add Uptime Robot Monitor' : 'Add Uptime Kuma Monitor';
     document.getElementById('modalTitle').textContent = modalTitle;
+    
+    // Reset form and show default fields
+    document.getElementById('addMonitorForm').reset();
+    document.getElementById('monitorType').value = '1'; // Default to HTTP
+    handleMonitorTypeChange(); // Show correct fields
+    
     openModal('addMonitorModal');
+}
+
+// Handle monitor type changes to show/hide relevant fields
+function handleMonitorTypeChange() {
+    const type = document.getElementById('monitorType').value;
+    const urlField = document.getElementById('urlField');
+    const hostnameField = document.getElementById('hostnameField');
+    const portField = document.getElementById('portField');
+    const keywordField = document.getElementById('keywordField');
+    const urlInput = document.getElementById('monitorUrl');
+    const hostnameInput = document.getElementById('monitorHostname');
+    const portInput = document.getElementById('monitorPort');
+    const keywordInput = document.getElementById('monitorKeyword');
+    
+    // Reset all fields
+    urlField.style.display = 'none';
+    hostnameField.style.display = 'none';
+    portField.style.display = 'none';
+    keywordField.style.display = 'none';
+    urlInput.removeAttribute('required');
+    hostnameInput.removeAttribute('required');
+    portInput.removeAttribute('required');
+    keywordInput.removeAttribute('required');
+    
+    switch(type) {
+        case '1': // HTTP(s)
+            urlField.style.display = 'block';
+            urlInput.setAttribute('required', 'required');
+            break;
+        case '2': // Keyword
+            urlField.style.display = 'block';
+            keywordField.style.display = 'block';
+            urlInput.setAttribute('required', 'required');
+            keywordInput.setAttribute('required', 'required');
+            break;
+        case '3': // Ping
+            hostnameField.style.display = 'block';
+            hostnameInput.setAttribute('required', 'required');
+            break;
+        case '4': // Port
+            hostnameField.style.display = 'block';
+            portField.style.display = 'block';
+            hostnameInput.setAttribute('required', 'required');
+            portInput.setAttribute('required', 'required');
+            break;
+    }
 }
 
 // Map monitor type values to Uptime Kuma type strings
 function getKumaMonitorType(typeValue) {
     const typeMap = {
-        '1': 'http',      // HTTP(s)
-        '2': 'keyword',   // Keyword
-        '3': 'ping',      // Ping
-        '4': 'port'       // Port
+        '1': 'http',
+        '2': 'keyword',
+        '3': 'ping',
+        '4': 'port'
     };
     return typeMap[typeValue] || 'http';
 }
 
-// Handle add monitor form submission
+// Handle add monitor form submission - ENHANCED VERSION
 document.getElementById('addMonitorForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const name = document.getElementById('monitorName').value;
-    const url = document.getElementById('monitorUrl').value;
     const type = document.getElementById('monitorType').value;
     const interval = document.getElementById('monitorInterval').value;
+    
+    // Build payload based on monitor type
+    let payload;
+    
+    if (currentService === 'robot') {
+        // Uptime Robot payload
+        payload = {
+            friendly_name: name,
+            type: parseInt(type),
+            interval: parseInt(interval)
+        };
+        
+        // Add type-specific fields
+        switch(type) {
+            case '1': // HTTP(s)
+                payload.url = document.getElementById('monitorUrl').value;
+                break;
+            case '2': // Keyword
+                payload.url = document.getElementById('monitorUrl').value;
+                payload.keyword_value = document.getElementById('monitorKeyword').value;
+                payload.keyword_type = 1; // Exists
+                break;
+            case '3': // Ping
+                payload.url = document.getElementById('monitorHostname').value;
+                break;
+            case '4': // Port
+                const hostname = document.getElementById('monitorHostname').value;
+                const port = document.getElementById('monitorPort').value;
+                payload.url = hostname;
+                payload.sub_type = 1; // Custom port
+                payload.port = parseInt(port);
+                break;
+        }
+    } else {
+        // Uptime Kuma payload
+        payload = {
+            name: name,
+            type: getKumaMonitorType(type),
+            interval: parseInt(interval)
+        };
+        
+        // Add type-specific fields for Kuma
+        switch(type) {
+            case '1': // HTTP
+                payload.url = document.getElementById('monitorUrl').value;
+                break;
+            case '2': // Keyword
+                payload.url = document.getElementById('monitorUrl').value;
+                payload.keyword = document.getElementById('monitorKeyword').value;
+                break;
+            case '3': // Ping
+                payload.hostname = document.getElementById('monitorHostname').value;
+                break;
+            case '4': // Port
+                payload.hostname = document.getElementById('monitorHostname').value;
+                payload.port = parseInt(document.getElementById('monitorPort').value);
+                break;
+        }
+    }
     
     const endpoint = currentService === 'robot' 
         ? '/api/uptime-robot/monitor/add' 
         : '/api/uptime-kuma/monitor/add';
-    
-    const payload = currentService === 'robot' 
-        ? { friendly_name: name, url, type: parseInt(type), interval: parseInt(interval) }
-        : { name, url, type: getKumaMonitorType(type), interval: parseInt(interval) };
     
     try {
         const response = await fetch(endpoint, {
@@ -348,11 +461,11 @@ document.getElementById('addMonitorForm')?.addEventListener('submit', async func
         const data = await response.json();
         
         if (data.success) {
-            showToast('Monitor added successfully!', 'success');
+            showToast('Monitor added successfully', 'success');
             closeModal('addMonitorModal');
             document.getElementById('addMonitorForm').reset();
             
-            // Refresh the appropriate monitor list
+            // Refresh appropriate section
             if (currentService === 'robot') {
                 refreshUptimeRobot();
             } else {
@@ -362,8 +475,7 @@ document.getElementById('addMonitorForm')?.addEventListener('submit', async func
             showToast(data.error || 'Failed to add monitor', 'error');
         }
     } catch (error) {
-        console.error('Error adding monitor:', error);
-        showToast('Failed to add monitor', 'error');
+        showToast('Error adding monitor: ' + error.message, 'error');
     }
 });
 
@@ -380,7 +492,6 @@ function openEditMonitor(service, id, name, url) {
     openModal('editMonitorModal');
 }
 
-// Handle edit monitor form submission
 document.getElementById('editMonitorForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -393,9 +504,16 @@ document.getElementById('editMonitorForm')?.addEventListener('submit', async fun
         ? '/api/uptime-robot/monitor/edit' 
         : '/api/uptime-kuma/monitor/edit';
     
-    const payload = currentService === 'robot'
-        ? { id: parseInt(id), friendly_name: name, url, interval: interval ? parseInt(interval) : undefined }
-        : { id: parseInt(id), name, url, interval: interval ? parseInt(interval) : undefined };
+    const payload = {
+        id: parseInt(id),
+        friendly_name: name,
+        name: name,
+        url: url
+    };
+    
+    if (interval) {
+        payload.interval = parseInt(interval);
+    }
     
     try {
         const response = await fetch(endpoint, {
@@ -407,10 +525,9 @@ document.getElementById('editMonitorForm')?.addEventListener('submit', async fun
         const data = await response.json();
         
         if (data.success) {
-            showToast('Monitor updated successfully!', 'success');
+            showToast('Monitor updated successfully', 'success');
             closeModal('editMonitorModal');
             
-            // Refresh the appropriate monitor list
             if (currentService === 'robot') {
                 refreshUptimeRobot();
             } else {
@@ -420,8 +537,7 @@ document.getElementById('editMonitorForm')?.addEventListener('submit', async fun
             showToast(data.error || 'Failed to update monitor', 'error');
         }
     } catch (error) {
-        console.error('Error updating monitor:', error);
-        showToast('Failed to update monitor', 'error');
+        showToast('Error updating monitor: ' + error.message, 'error');
     }
 });
 
@@ -430,29 +546,31 @@ document.getElementById('editMonitorForm')?.addEventListener('submit', async fun
 function openDeleteMonitor(service, id, name) {
     currentService = service;
     deleteMonitorId = id;
+    
     document.getElementById('deleteMonitorName').textContent = name;
     openModal('deleteMonitorModal');
 }
 
-function confirmDelete() {
+async function confirmDelete() {
     if (!deleteMonitorId) return;
     
-    const endpoint = currentService === 'robot' 
-        ? '/api/uptime-robot/monitor/delete' 
+    const endpoint = currentService === 'robot'
+        ? '/api/uptime-robot/monitor/delete'
         : '/api/uptime-kuma/monitor/delete';
     
-    fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: deleteMonitorId })
-    })
-    .then(response => response.json())
-    .then(data => {
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: deleteMonitorId })
+        });
+        
+        const data = await response.json();
+        
         if (data.success) {
-            showToast('Monitor deleted successfully!', 'success');
+            showToast('Monitor deleted successfully', 'success');
             closeModal('deleteMonitorModal');
             
-            // Refresh the appropriate monitor list
             if (currentService === 'robot') {
                 refreshUptimeRobot();
             } else {
@@ -461,20 +579,21 @@ function confirmDelete() {
         } else {
             showToast(data.error || 'Failed to delete monitor', 'error');
         }
-    })
-    .catch(error => {
-        console.error('Error deleting monitor:', error);
-        showToast('Failed to delete monitor', 'error');
-    });
+    } catch (error) {
+        showToast('Error deleting monitor: ' + error.message, 'error');
+    }
 }
 
 // ==================== INITIALIZATION ====================
 
-// Initialize dashboard on page load
 document.addEventListener('DOMContentLoaded', function() {
     checkConfigStatus();
-    refreshAll();
+    loadUptimeRobotMonitors();
+    loadUptimeKumaMonitors();
     
-    // Set up auto-refresh every 30 seconds
-    setInterval(refreshAll, 30000);
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        loadUptimeRobotMonitors();
+        loadUptimeKumaMonitors();
+    }, 30000);
 });

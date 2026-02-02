@@ -6,7 +6,6 @@
     <title>Monitor Details - Uptime Monitoring</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/monitor_detail.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -97,60 +96,6 @@
             </div>
         </div>
 
-        <!-- Response Time Chart -->
-        <div class="chart-section">
-            <div class="section-header">
-                <h2>📈 Response Time</h2>
-                <div class="time-range-selector">
-                    <button class="time-btn active" data-range="24h" onclick="changeTimeRange('24h')">24 Hours</button>
-                    <button class="time-btn" data-range="7d" onclick="changeTimeRange('7d')">7 Days</button>
-                    <button class="time-btn" data-range="30d" onclick="changeTimeRange('30d')">30 Days</button>
-                </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="responseChart"></canvas>
-            </div>
-        </div>
-
-        <!-- Uptime Bar -->
-        <div class="uptime-section">
-            <div class="section-header">
-                <h2>📊 Uptime History (Last 30 Days)</h2>
-            </div>
-            <div class="uptime-bar-container" id="uptimeBarContainer">
-                <div class="loading">Loading uptime data...</div>
-            </div>
-            <div class="uptime-legend">
-                <div class="legend-item">
-                    <span class="legend-color" style="background: var(--status-up);"></span>
-                    <span>Operational</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background: var(--status-down);"></span>
-                    <span>Down</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background: var(--status-paused);"></span>
-                    <span>Paused</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background: var(--medium-gray);"></span>
-                    <span>No Data</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Incidents -->
-        <div class="incidents-section">
-            <div class="section-header">
-                <h2>⚠️ Recent Incidents</h2>
-                <button class="refresh-btn" onclick="refreshIncidents()">🔄 Refresh</button>
-            </div>
-            <div id="incidentsContainer" class="incidents-container">
-                <div class="loading">Loading incidents...</div>
-            </div>
-        </div>
-
         <!-- Monitor Configuration -->
         <div class="config-section">
             <div class="section-header">
@@ -158,32 +103,6 @@
             </div>
             <div class="config-grid" id="configGrid">
                 <div class="loading">Loading configuration...</div>
-            </div>
-        </div>
-
-        <!-- Recent Checks Log -->
-        <div class="checks-section">
-            <div class="section-header">
-                <h2>📝 Recent Checks</h2>
-                <button class="refresh-btn" onclick="refreshChecks()">🔄 Refresh</button>
-            </div>
-            <div class="checks-table-container">
-                <table class="checks-table" id="checksTable">
-                    <thead>
-                        <tr>
-                            <th>Status</th>
-                            <th>Timestamp</th>
-                            <th>Response Time</th>
-                            <th>Status Code</th>
-                            <th>Message</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td colspan="5" class="loading">Loading recent checks...</td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </div>
 
@@ -207,11 +126,6 @@
             localStorage.setItem('theme', newTheme);
             
             updateThemeButton(newTheme);
-            
-            // Update chart colors if chart exists
-            if (window.responseChart) {
-                updateChartColors(newTheme);
-            }
         }
         
         function updateThemeButton(theme) {

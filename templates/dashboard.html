@@ -68,7 +68,7 @@
         </footer>
     </div>
 
-    <!-- Add Monitor Modal -->
+    <!-- Add Monitor Modal - ENHANCED VERSION -->
     <div id="addMonitorModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -81,19 +81,42 @@
                         <label for="monitorName">Monitor Name *</label>
                         <input type="text" id="monitorName" required placeholder="e.g., My Website">
                     </div>
+                    
                     <div class="form-group">
-                        <label for="monitorUrl">URL *</label>
-                        <input type="url" id="monitorUrl" required placeholder="https://example.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="monitorType">Monitor Type</label>
-                        <select id="monitorType">
+                        <label for="monitorType">Monitor Type *</label>
+                        <select id="monitorType" onchange="handleMonitorTypeChange()">
                             <option value="1">HTTP(s)</option>
                             <option value="3">Ping</option>
                             <option value="4">Port</option>
                             <option value="2">Keyword</option>
                         </select>
                     </div>
+                    
+                    <!-- URL field (for HTTP, Keyword) -->
+                    <div class="form-group" id="urlField">
+                        <label for="monitorUrl">URL *</label>
+                        <input type="url" id="monitorUrl" placeholder="https://example.com">
+                    </div>
+                    
+                    <!-- Hostname field (for Ping, Port) -->
+                    <div class="form-group" id="hostnameField" style="display:none;">
+                        <label for="monitorHostname">Hostname/IP *</label>
+                        <input type="text" id="monitorHostname" placeholder="example.com or 192.168.1.1">
+                    </div>
+                    
+                    <!-- Port field (for Port monitor type) -->
+                    <div class="form-group" id="portField" style="display:none;">
+                        <label for="monitorPort">Port *</label>
+                        <input type="number" id="monitorPort" placeholder="80" min="1" max="65535">
+                    </div>
+                    
+                    <!-- Keyword field (for Keyword monitor type) -->
+                    <div class="form-group" id="keywordField" style="display:none;">
+                        <label for="monitorKeyword">Keyword to Check *</label>
+                        <input type="text" id="monitorKeyword" placeholder="Success">
+                        <small>The page must contain this keyword to be considered UP</small>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="monitorInterval">Check Interval (seconds)</label>
                         <input type="number" id="monitorInterval" value="300" min="60">
